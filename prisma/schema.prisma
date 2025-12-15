@@ -1,0 +1,99 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  CANCELLED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(USER)
+  balance      Int       @default(1000)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  skins     Skin[]
+  listings  Listing[] @relation("ListingSeller")
+  purchases Listing[] @relation("ListingBuyer")
+  sessions  Session[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Skin {
+  id         String   @id @default(cuid())
+  tokenId    Int      @unique
+  name       String
+  rarity     String
+  attributes Json
+  imageSvg   String
+  ownerId    String
+  createdAt  DateTime @default(now())
+
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  listings Listing[]
+
+  @@index([ownerId])
+}
+
+model Listing {
+  id        String        @id @default(cuid())
+  skinId    String
+  sellerId  String
+  buyerId   String?
+  price     Int
+  status    ListingStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  soldAt    DateTime?
+
+  skin   Skin  @relation(fields: [skinId], references: [id], onDelete: Cascade)
+  seller User  @relation("ListingSeller", fields: [sellerId], references: [id], onDelete: Restrict)
+  buyer  User? @relation("ListingBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
+
+  @@index([skinId])
+  @@index([sellerId])
+  @@index([buyerId])
+  @@index([status])
+}
+
+model LedgerEntry {
+  id        String   @id @default(cuid())
+  idx       Int      @unique
+  type      String
+  payload   Json
+  prevHash  String?
+  hash      String
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([createdAt])
+}
