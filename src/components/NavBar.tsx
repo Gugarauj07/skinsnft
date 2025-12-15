@@ -41,6 +41,11 @@ export function NavBar() {
             <Link href="/skins" className="hover:text-zinc-950 dark:hover:text-white">
               Skins
             </Link>
+            {user ? (
+              <Link href="/me" className="hover:text-zinc-950 dark:hover:text-white">
+                Minha conta
+              </Link>
+            ) : null}
             {user?.role === "ADMIN" ? (
               <Link href="/admin" className="hover:text-zinc-950 dark:hover:text-white">
                 Admin

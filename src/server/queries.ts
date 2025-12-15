@@ -137,4 +137,75 @@ export function getActiveListings() {
   }[];
 }
 
+export function getMySkinsWithActiveListing(ownerId: string) {
+  ensureSeeded();
+  const db = getDb();
+  return db
+    .prepare(
+      `
+      SELECT
+        s.id AS id,
+        s.token_id AS tokenId,
+        s.name AS name,
+        s.rarity AS rarity,
+        s.image_svg AS imageSvg,
+        l.id AS listingId,
+        l.price AS listingPrice
+      FROM skins s
+      LEFT JOIN listings l
+        ON l.skin_id = s.id
+       AND l.status = 'ACTIVE'
+      WHERE s.owner_id = ?
+      ORDER BY s.token_id ASC
+    `,
+    )
+    .all(ownerId) as {
+    id: string;
+    tokenId: number;
+    name: string;
+    rarity: string;
+    imageSvg: string;
+    listingId: string | null;
+    listingPrice: number | null;
+  }[];
+}
+
+export function getMyListings(sellerId: string) {
+  ensureSeeded();
+  const db = getDb();
+  return db
+    .prepare(
+      `
+      SELECT
+        l.id AS id,
+        l.price AS price,
+        l.status AS status,
+        l.created_at AS createdAt,
+        l.sold_at AS soldAt,
+        s.token_id AS tokenId,
+        s.name AS name,
+        s.rarity AS rarity,
+        s.image_svg AS imageSvg,
+        bu.email AS buyerEmail
+      FROM listings l
+      JOIN skins s ON s.id = l.skin_id
+      LEFT JOIN users bu ON bu.id = l.buyer_id
+      WHERE l.seller_id = ?
+      ORDER BY l.created_at DESC
+    `,
+    )
+    .all(sellerId) as {
+    id: string;
+    price: number;
+    status: "ACTIVE" | "SOLD" | "CANCELLED" | string;
+    createdAt: string;
+    soldAt: string | null;
+    tokenId: number;
+    name: string;
+    rarity: string;
+    imageSvg: string;
+    buyerEmail: string | null;
+  }[];
+}
+
 
