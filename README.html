@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>README.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="relat%C3%B3rio-de-entrega-blockchain--skinsnft">Relatório de entrega (Blockchain) — SkinsNFT</h1>
+<p>Este relatório explica como funciona a parte de blockchain do projeto SkinsNFT, focando em como ocorrem as operações de compra e venda de NFTs.</p>
+<h2 id="o-que-%C3%A9-blockchain-explica%C3%A7%C3%A3o-pr%C3%A1tica">O que é blockchain (explicação prática)</h2>
+<p>Blockchain é uma forma de manter um &quot;livro-razão&quot; (ledger) compartilhado onde várias pessoas ou computadores mantêm cópias idênticas do mesmo registro. A diferença para um banco de dados comum é que não existe um &quot;dono&quot; central que pode alterar os dados quando quiser.</p>
+<p><strong>Como funciona na prática:</strong></p>
+<p>Imagine um caderno que várias pessoas têm uma cópia. Quando alguém quer fazer uma mudança (por exemplo, &quot;João agora é dono do token #5&quot;), essa pessoa escreve uma mensagem, assina com sua assinatura única, e envia para todos. Todos verificam se a assinatura é válida e se a mudança faz sentido. Se a maioria concordar, todos atualizam suas cópias do caderno.</p>
+<p>Na blockchain real:</p>
+<ul>
+<li>O &quot;caderno&quot; é uma sequência de blocos, cada um contendo várias transações</li>
+<li>Cada bloco referencia o anterior (formando uma &quot;corrente&quot; - chain)</li>
+<li>Múltiplos computadores (nós) mantêm cópias idênticas</li>
+<li>Quando uma transação é incluída em um bloco, ela vira parte permanente do histórico</li>
+</ul>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart TD
+    A[Transação criada:<br/>Transferir NFT #5] --> B[Transação assinada<br/>com chave privada]
+    B --> C[Enviada para rede]
+    C --> D[Nós validam:<br/>assinatura ok?<br/>regras respeitadas?]
+    D -->|Não| E[Transação rejeitada]
+    D -->|Sim| F[Incluída em bloco]
+    F --> G[Bloco minerado/confirmado]
+    G --> H[Todos os nós<br/>atualizam estado]
+    H --> I[NFT #5 agora<br/>pertence ao novo dono]
+</div></code></pre>
+<p><strong>Estado vs. Transações:</strong></p>
+<p>A blockchain mantém dois tipos de informação:</p>
+<ol>
+<li><strong>Estado atual</strong>: quem é dono de cada NFT agora, quais estão à venda, etc. É como uma &quot;foto&quot; do momento atual.</li>
+<li><strong>Histórico de transações</strong>: todas as mudanças que aconteceram. É como um &quot;filme&quot; de tudo que já ocorreu.</li>
+</ol>
+<p>Quando você consulta <code>ownerOf(tokenId)</code>, está lendo o estado atual. Quando você faz uma transação de compra, está criando uma nova entrada no histórico que vai mudar o estado.</p>
+<h2 id="chaves-privadas-e-p%C3%BAblicas-como-funciona-a-autentica%C3%A7%C3%A3o">Chaves privadas e públicas: como funciona a autenticação</h2>
+<p>Na blockchain, não existe &quot;login com senha&quot;. Em vez disso, cada pessoa tem um par de chaves:</p>
+<ul>
+<li><strong>Chave privada</strong>: é como uma senha super secreta que nunca deve ser compartilhada. Quem tem a chave privada controla a conta. É uma string longa de números e letras (exemplo: <code>0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80</code>).</li>
+<li><strong>Endereço público (wallet_address)</strong>: é derivado da chave privada usando matemática criptográfica. É como um &quot;número de conta&quot; que todo mundo pode ver (exemplo: <code>0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266</code>).</li>
+</ul>
+<p><strong>Como funciona a assinatura:</strong></p>
+<p>Quando você quer fazer uma transação, você &quot;assina&quot; ela com sua chave privada. A assinatura é uma prova matemática de que você tem a chave privada, sem precisar revelar a chave. É como assinar um documento: qualquer um pode verificar que a assinatura é sua, mas ninguém consegue falsificar.</p>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart LR
+    A[Transação:<br/>Comprar NFT #5] --> B[Assinada com<br/>chave privada]
+    B --> C[Assinatura gerada<br/>matematicamente]
+    C --> D[Blockchain verifica:<br/>assinatura corresponde<br/>ao endereço público?]
+    D -->|Sim| E[Transação aceita]
+    D -->|Não| F[Transação rejeitada]
+</div></code></pre>
+<p><strong>No projeto SkinsNFT:</strong></p>
+<p>Quando um usuário se cadastra, o sistema gera automaticamente um par de chaves para ele:</p>
+<ul>
+<li>A chave privada é guardada no SQLite (na tabela <code>users</code>, coluna <code>wallet_private_key</code>)</li>
+<li>O endereço público é guardado também (coluna <code>wallet_address</code>)</li>
+</ul>
+<p>Quando o usuário quer fazer uma transação (vender ou comprar), a API pega a chave privada dele do banco e usa para &quot;assinar&quot; a transação. A blockchain verifica a assinatura e identifica quem está fazendo a operação.</p>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart LR
+    A[Usuário se cadastra] --> B[Sistema gera<br/>chave privada]
+    B --> C[Deriva endereço público<br/>wallet_address]
+    C --> D[Guarda ambos no SQLite]
+    D --> E[Quando faz transação:<br/>API usa chave privada<br/>para assinar]
+    E --> F[Blockchain valida<br/>assinatura e identifica<br/>o remetente]
+</div></code></pre>
+<h2 id="smart-contracts-programas-que-rodam-na-blockchain">Smart Contracts: programas que rodam na blockchain</h2>
+<p>Um smart contract é como um programa de computador que roda na blockchain. A diferença é que ele não roda em um único servidor, mas sim em todos os nós da rede simultaneamente.</p>
+<p><strong>Características importantes:</strong></p>
+<ol>
+<li>
+<p><strong>Determinístico</strong>: dado o mesmo estado inicial e a mesma transação, todos os nós chegam ao mesmo resultado. Isso garante que todos concordem sobre o estado.</p>
+</li>
+<li>
+<p><strong>Imutável</strong>: uma vez deployado, o código do contrato não pode ser alterado. Se houver um bug, precisa fazer deploy de um novo contrato.</p>
+</li>
+<li>
+<p><strong>Público</strong>: qualquer um pode ler o código do contrato e ver o que ele faz. Não há &quot;código secreto&quot;.</p>
+</li>
+<li>
+<p><strong>Armazenamento persistente</strong>: o contrato pode guardar dados permanentemente na blockchain (como quem é dono de cada NFT).</p>
+</li>
+</ol>
+<p><strong>Como o contrato guarda dados:</strong></p>
+<p>O contrato usa estruturas chamadas &quot;mappings&quot; (mapeamentos) que funcionam como dicionários:</p>
+<ul>
+<li><code>mapping(uint256 =&gt; address) private _owners</code> → para cada tokenId, guarda o endereço do dono</li>
+<li><code>mapping(uint256 =&gt; Listing) public listings</code> → para cada tokenId, guarda se está à venda e qual o preço</li>
+</ul>
+<p>É como se fosse uma tabela onde você pode consultar &quot;quem é dono do token #5?&quot; ou &quot;o token #5 está à venda? Qual o preço?&quot;.</p>
+<p><strong>No projeto SkinsNFT:</strong></p>
+<p>O contrato <code>SkinsNFT.sol</code> tem funções que podem ser chamadas:</p>
+<ul>
+<li>
+<p><strong>Funções de leitura</strong> (não mudam estado, não custam gas do usuário):</p>
+<ul>
+<li><code>ownerOf(tokenId)</code> → retorna quem é dono</li>
+<li><code>getListing(tokenId)</code> → retorna se está à venda e qual o preço</li>
+</ul>
+</li>
+<li>
+<p><strong>Funções de escrita</strong> (mudam estado, custam gas):</p>
+<ul>
+<li><code>mintBatch()</code> → cria novos NFTs (só admin pode)</li>
+<li><code>listForSale()</code> → coloca NFT à venda</li>
+<li><code>buy()</code> → compra NFT e transfere propriedade</li>
+<li><code>cancelListing()</code> → cancela uma venda</li>
+</ul>
+</li>
+</ul>
+<p><strong>Exemplo prático: como funciona o <code>buy()</code>:</strong></p>
+<p>Quando alguém chama <code>buy(tokenId)</code> enviando ETH:</p>
+<ol>
+<li>O contrato verifica se o token está à venda (<code>require(listing.active)</code>)</li>
+<li>Verifica se o valor enviado é suficiente (<code>require(msg.value &gt;= listing.price)</code>)</li>
+<li>Verifica se o vendedor ainda é dono (<code>require(ownerOf(tokenId) == listing.seller)</code>)</li>
+<li>Se tudo estiver ok:
+<ul>
+<li>Marca a listing como inativa (<code>listing.active = false</code>)</li>
+<li>Transfere o NFT (<code>_transfer(seller, msg.sender, tokenId)</code>)</li>
+<li>Envia o ETH para o vendedor (<code>payable(seller).call{value: price}(&quot;&quot;)</code>)</li>
+</ul>
+</li>
+</ol>
+<p>Se qualquer um dos <code>require()</code> falhar, a transação inteira é revertida e nada muda.</p>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart TD
+    A[Smart Contract SkinsNFT] --> B[Estado:<br/>ownerOf mapping<br/>listings mapping]
+    A --> C[Funções de Leitura:<br/>ownerOf, getListing]
+    A --> D[Funções de Escrita:<br/>mint, listForSale, buy]
+    C -->|Consulta estado| E[Retorna resultado]
+    D -->|Muda estado| F[Transação confirmada<br/>Estado atualizado]
+</div></code></pre>
+<p><strong>Importante:</strong> A chave privada é muito sensível. Se alguém conseguir a chave privada de um usuário, pode fazer transações em nome dele. Por isso, em produção, as chaves não deveriam ficar no servidor; o ideal é que o usuário assine no próprio navegador (usando MetaMask, por exemplo).</p>
+<h2 id="como-o-projeto-se-conecta-%C3%A0-blockchain">Como o projeto se conecta à blockchain</h2>
+<p>Para interagir com a blockchain, o projeto usa a biblioteca <strong>ethers.js</strong>, que funciona como um &quot;tradutor&quot; entre JavaScript e a blockchain.</p>
+<p><strong>RPC (Remote Procedure Call):</strong></p>
+<p>A conexão acontece através de um nó RPC, que é como um &quot;servidor&quot; que fala a linguagem da blockchain. No projeto, isso é configurado via variável de ambiente <code>RPC_URL</code>. Pode ser:</p>
+<ul>
+<li>Um nó local do Hardhat (para desenvolvimento)</li>
+<li>Um nó público da Sepolia (rede de teste)</li>
+<li>Um nó da rede principal Ethereum (em produção)</li>
+</ul>
+<p><strong>O que o ethers.js faz:</strong></p>
+<ol>
+<li><strong>Provider</strong>: conecta ao nó RPC e permite ler o estado da blockchain</li>
+<li><strong>Signer</strong>: usa a chave privada para assinar transações antes de enviar</li>
+<li><strong>Contract</strong>: cria uma interface JavaScript para chamar funções do contrato</li>
+</ol>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart LR
+    A[API Next.js] --> B[ethers.js]
+    B --> C[Provider<br/>conecta RPC]
+    B --> D[Signer<br/>assina transações]
+    B --> E[Contract<br/>chama funções]
+    C --> F[Blockchain]
+    D --> F
+    E --> F
+</div></code></pre>
+<p><strong>Exemplo prático:</strong></p>
+<p>Quando a API quer saber quem é dono de um NFT:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> contract = getContract(provider);  <span class="hljs-comment">// Conecta ao contrato</span>
+<span class="hljs-keyword">const</span> owner = <span class="hljs-keyword">await</span> contract.ownerOf(tokenId);  <span class="hljs-comment">// Chama função de leitura</span>
+</div></code></pre>
+<p>Quando a API quer fazer uma compra:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> signer = getUserSigner(privateKey);  <span class="hljs-comment">// Cria signer com chave privada</span>
+<span class="hljs-keyword">const</span> contract = getContract(signer);  <span class="hljs-comment">// Conecta com signer (pode escrever)</span>
+<span class="hljs-keyword">const</span> tx = <span class="hljs-keyword">await</span> contract.buy(tokenId, { <span class="hljs-attr">value</span>: priceWei });  <span class="hljs-comment">// Envia transação</span>
+<span class="hljs-keyword">await</span> tx.wait();  <span class="hljs-comment">// Espera confirmação</span>
+</div></code></pre>
+<h2 id="arquitetura-geral-o-que-cada-parte-faz">Arquitetura geral: o que cada parte faz</h2>
+<p>O sistema tem três componentes principais:</p>
+<p><strong>1. Contrato na blockchain (SkinsNFT.sol)</strong>
+É a &quot;fonte da verdade&quot;. Guarda quem é dono de cada NFT e quais estão à venda. Essa informação não pode ser alterada sem uma transação válida assinada.</p>
+<p><strong>2. Banco SQLite</strong>
+É um banco de dados local que guarda informações auxiliares: nome da skin, raridade, imagem SVG e metadados. Também guarda dados de usuários e sessões de login. O objetivo é acelerar a interface e evitar consultas desnecessárias à blockchain. Importante: o SQLite não decide quem é dono; isso só a blockchain decide.</p>
+<p><strong>3. API (Next.js)</strong>
+Conecta o frontend com a blockchain e o banco. Quando precisa saber quem é dono, consulta a blockchain. Quando precisa mostrar nome/imagem, consulta o SQLite.</p>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart LR
+    A[Usuário] --> B[API Next.js]
+    B --> C[Contrato Blockchain<br/>Dono + Venda]
+    B --> D[SQLite<br/>Nome + Imagem + Dados]
+    C -->|Consulta| B
+    D -->|Dados auxiliares| B
+</div></code></pre>
+<h2 id="como-funciona-colocar-uma-skin-%C3%A0-venda">Como funciona: colocar uma skin à venda</h2>
+<p><strong>Passo a passo:</strong></p>
+<ol>
+<li>Usuário informa o tokenId e o preço em ETH.</li>
+<li>API consulta a blockchain: &quot;quem é dono deste token?&quot; (<code>ownerOf(tokenId)</code>).</li>
+<li>Se o usuário for o dono, a API assina uma transação com a chave privada do usuário.</li>
+<li>A transação é enviada para a blockchain.</li>
+<li>O contrato verifica novamente se quem está chamando é o dono.</li>
+<li>Se tudo estiver ok, o contrato grava que aquele token está à venda, com o preço informado.</li>
+<li>A partir desse momento, qualquer pessoa pode consultar e ver que a skin está à venda.</li>
+</ol>
+<h2 id="como-funciona-comprar-uma-skin">Como funciona: comprar uma skin</h2>
+<p><strong>Passo a passo:</strong></p>
+<ol>
+<li>Comprador clica em &quot;Comprar&quot; na skin desejada.</li>
+<li>API consulta a blockchain para ver se está à venda e qual o preço (<code>getListing(tokenId)</code>).</li>
+<li>API verifica se o comprador tem ETH suficiente na carteira.</li>
+<li>Se tiver, a API assina uma transação com a chave do comprador, incluindo o pagamento em ETH.</li>
+<li>A transação é enviada para a blockchain.</li>
+<li>O contrato valida: a listing está ativa? O valor enviado é suficiente? O vendedor ainda é dono?</li>
+<li>Se tudo estiver ok, o contrato faz três coisas <strong>na mesma transação</strong>:
+<ul>
+<li>Transfere o NFT do vendedor para o comprador</li>
+<li>Envia o ETH do comprador para o vendedor</li>
+<li>Marca a listing como vendida</li>
+</ul>
+</li>
+<li>Se qualquer coisa falhar, a transação inteira é revertida (nada muda).</li>
+<li>Após confirmação, o comprador é o novo dono e pode consultar isso na blockchain.</li>
+</ol>
+<h2 id="o-papel-do-sqlite-banco-de-dados-local">O papel do SQLite (banco de dados local)</h2>
+<p>O SQLite serve para duas coisas principais:</p>
+<p><strong>1. Cache de informações que não mudam na blockchain</strong>
+Nome da skin, raridade, imagem SVG e atributos são gerados uma vez e não mudam. Guardar isso no SQLite evita ter que consultar a blockchain toda vez que alguém quer ver a lista de skins. Quando a API precisa mostrar a lista, ela busca no SQLite (rápido) e depois consulta a blockchain só para saber quem é dono de cada uma.</p>
+<p><strong>2. Dados de usuários e autenticação</strong>
+O SQLite guarda emails, senhas (hash), endereços de carteira e sessões de login. Isso é necessário porque a blockchain não tem conceito de &quot;usuário&quot; ou &quot;login&quot;; ela só conhece endereços de carteira.</p>
+<p><strong>Importante:</strong> O SQLite nunca decide quem é dono de um NFT. Se o SQLite diz que o usuário X é dono, mas a blockchain diz que é Y, a verdade é Y (blockchain sempre ganha).</p>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart TD
+    A[API precisa mostrar lista de skins] --> B[Busca no SQLite:<br/>nome, imagem, raridade]
+    B --> C[Para cada skin, consulta blockchain:<br/>quem é dono?]
+    C --> D[Combina dados:<br/>SQLite + Blockchain]
+    D --> E[Mostra para usuário]
+</div></code></pre>
+<h2 id="transa%C3%A7%C3%B5es-como-funcionam-na-pr%C3%A1tica">Transações: como funcionam na prática</h2>
+<p>Uma transação na blockchain é como uma &quot;ordem de serviço&quot; que você envia para a rede. Ela contém:</p>
+<ol>
+<li><strong>De quem vem</strong> (from): seu endereço público</li>
+<li><strong>Para onde vai</strong> (to): endereço do contrato ou outro usuário</li>
+<li><strong>O que fazer</strong>: qual função do contrato chamar e com quais parâmetros</li>
+<li><strong>Quanto pagar</strong>: valor em ETH (se for uma compra, por exemplo)</li>
+<li><strong>Assinatura</strong>: prova criptográfica de que você tem a chave privada</li>
+</ol>
+<p><strong>Gas e custos:</strong></p>
+<p>Toda transação que muda o estado da blockchain custa &quot;gas&quot;. Gas é como uma taxa de processamento. Quanto mais complexa a operação, mais gas ela consome. O gas é pago em ETH.</p>
+<p>Por exemplo:</p>
+<ul>
+<li>Consultar <code>ownerOf()</code> → não custa gas (só leitura)</li>
+<li>Fazer <code>buy()</code> → custa gas (muda estado, transfere NFT e ETH)</li>
+</ul>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart TD
+    A[Usuário quer comprar NFT] --> B[API cria transação:<br/>função: buy<br/>valor: preço em ETH]
+    B --> C[Assina com chave privada]
+    C --> D[Envia para rede]
+    D --> E[Rede calcula gas necessário]
+    E --> F[Usuário paga gas<br/>em ETH]
+    F --> G[Transação executada]
+    G --> H[Estado atualizado:<br/>NFT transferido]
+</div></code></pre>
+<p><strong>Nonce: evitando duplicação</strong></p>
+<p>Cada conta tem um &quot;nonce&quot; (número usado uma vez) que aumenta a cada transação. Isso garante que:</p>
+<ul>
+<li>Transações sejam executadas na ordem correta</li>
+<li>Não seja possível reutilizar a mesma transação duas vezes</li>
+<li>Se você enviar duas transações rapidamente, elas sejam processadas sequencialmente</li>
+</ul>
+<p>No projeto, quando fazemos muitas transações seguidas (como ao fazer seed de muitos NFTs), precisamos gerenciar o nonce corretamente para evitar erros.</p>
+<h2 id="seguran%C3%A7a-o-que-a-blockchain-garante">Segurança: o que a blockchain garante</h2>
+<p>A blockchain garante que:</p>
+<ul>
+<li>
+<p><strong>Propriedade é verificável</strong>: qualquer pessoa pode consultar <code>ownerOf(tokenId)</code> e saber quem é o dono real, sem depender de confiar em um servidor. Não há como falsificar isso porque o estado está replicado em milhares de nós.</p>
+</li>
+<li>
+<p><strong>Vendas são atômicas</strong>: quando alguém compra, o pagamento e a transferência acontecem juntos na mesma transação. Não existe situação de &quot;pagou mas não recebeu&quot; ou &quot;recebeu mas não pagou&quot;. Se qualquer parte falhar, tudo é revertido.</p>
+</li>
+<li>
+<p><strong>Apenas o dono pode vender</strong>: o contrato verifica criptograficamente (via assinatura) se quem está tentando listar é realmente o dono. Mesmo que alguém consiga acesso ao servidor, não consegue falsificar a assinatura sem a chave privada.</p>
+</li>
+<li>
+<p><strong>Histórico imutável</strong>: uma vez que uma transação é confirmada em um bloco, ela vira parte permanente do histórico. Não há como &quot;desfazer&quot; ou alterar transações passadas.</p>
+</li>
+</ul>
+<p><strong>Limitações deste MVP:</strong></p>
+<ul>
+<li>Chaves privadas são guardadas no servidor (adequado para demo local, mas em produção deveriam ficar no cliente com MetaMask).</li>
+<li>Metadata está em servidor local (em produção deveria estar em IPFS/Arweave para ser imutável e descentralizado).</li>
+</ul>
+<h2 id="diagrama-de-classes">Diagrama de classes</h2>
+<pre><code class="language-mermaid"><div class="mermaid">classDiagram
+  class SkinsNFT {
+    - nextTokenId
+    - listings
+    + mint
+    + mintBatch
+    + listForSale
+    + cancelListing
+    + buy
+    + getListing
+    + getNextTokenId
+    + ownerOf
+    + tokenURI
+  }
+
+  class Listing {
+    seller
+    price
+    active
+  }
+
+  class BlockchainService {
+    getProvider
+    getContract
+    mintBatchSkins
+    getOwnerOf
+    getListingOnChain
+    listSkinForSale
+    buySkin
+    cancelSkinListing
+  }
+
+  class MetadataAPI {
+    getMetadata
+  }
+
+  SkinsNFT --> Listing : listings
+  BlockchainService --> SkinsNFT : calls
+  SkinsNFT ..> MetadataAPI : tokenURI
+</div></code></pre>
+
+</body>
+</html>
