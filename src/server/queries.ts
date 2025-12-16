@@ -1,7 +1,7 @@
-import { ensureSeeded, getDb } from "./db";
+import { getDb } from "./db";
+import { getOwnerOf, getListingOnChain } from "./blockchain";
 
 export function getAllSkins() {
-  ensureSeeded();
   const db = getDb();
   return db
     .prepare(
@@ -12,10 +12,8 @@ export function getAllSkins() {
         s.name AS name,
         s.rarity AS rarity,
         s.image_svg AS imageSvg,
-        u.email AS ownerEmail,
-        u.id AS ownerId
+        s.metadata_uri AS metadataUri
       FROM skins s
-      JOIN users u ON u.id = s.owner_id
       ORDER BY s.token_id ASC
     `,
     )
@@ -25,13 +23,11 @@ export function getAllSkins() {
     name: string;
     rarity: string;
     imageSvg: string;
-    ownerEmail: string;
-    ownerId: string;
+    metadataUri: string | null;
   }[];
 }
 
-export function getSkinWithListingByTokenId(tokenId: number) {
-  ensureSeeded();
+export async function getSkinWithOwner(tokenId: number) {
   const db = getDb();
   const skin = db
     .prepare(
@@ -43,10 +39,8 @@ export function getSkinWithListingByTokenId(tokenId: number) {
         s.rarity AS rarity,
         s.attributes_json AS attributesJson,
         s.image_svg AS imageSvg,
-        u.email AS ownerEmail,
-        u.id AS ownerId
+        s.metadata_uri AS metadataUri
       FROM skins s
-      JOIN users u ON u.id = s.owner_id
       WHERE s.token_id = ?
       LIMIT 1
     `,
@@ -59,31 +53,16 @@ export function getSkinWithListingByTokenId(tokenId: number) {
         rarity: string;
         attributesJson: string;
         imageSvg: string;
-        ownerEmail: string;
-        ownerId: string;
+        metadataUri: string | null;
       }
     | undefined;
 
   if (!skin) return null;
 
-  const listing = db
-    .prepare(
-      `
-      SELECT
-        l.id AS id,
-        l.price AS price,
-        l.status AS status,
-        l.seller_id AS sellerId,
-        su.email AS sellerEmail
-      FROM listings l
-      JOIN users su ON su.id = l.seller_id
-      WHERE l.skin_id = ? AND l.status = 'ACTIVE'
-      LIMIT 1
-    `,
-    )
-    .get(skin.id) as
-    | { id: string; price: number; status: string; sellerId: string; sellerEmail: string }
-    | undefined;
+  const ownerAddress = await getOwnerOf(tokenId);
+  const listing = await getListingOnChain(tokenId);
+
+  const ownerUser = ownerAddress ? db.prepare("SELECT id, email FROM users WHERE wallet_address = ?").get(ownerAddress) as { id: string; email: string } | undefined : undefined;
 
   return {
     skin: {
@@ -93,119 +72,90 @@ export function getSkinWithListingByTokenId(tokenId: number) {
       rarity: skin.rarity,
       attributes: JSON.parse(skin.attributesJson) as unknown,
       imageSvg: skin.imageSvg,
-      owner: { id: skin.ownerId, email: skin.ownerEmail },
+      metadataUri: skin.metadataUri,
+      owner: ownerUser ? { id: ownerUser.id, email: ownerUser.email, address: ownerAddress } : { address: ownerAddress },
     },
     listing: listing
-      ? { id: listing.id, price: listing.price, status: listing.status, seller: { id: listing.sellerId, email: listing.sellerEmail } }
+      ? {
+          price: listing.price.toString(),
+          seller: listing.seller,
+          active: listing.active,
+        }
       : null,
   };
 }
 
-export function getActiveListings() {
-  ensureSeeded();
+export async function getActiveListingsFromChain() {
   const db = getDb();
-  return db
-    .prepare(
-      `
-      SELECT
-        l.id AS id,
-        l.price AS price,
-        l.created_at AS createdAt,
-        s.token_id AS tokenId,
-        s.name AS name,
-        s.rarity AS rarity,
-        s.image_svg AS imageSvg,
-        su.email AS sellerEmail,
-        su.id AS sellerId
-      FROM listings l
-      JOIN skins s ON s.id = l.skin_id
-      JOIN users su ON su.id = l.seller_id
-      WHERE l.status = 'ACTIVE'
-      ORDER BY l.created_at DESC
-    `,
-    )
-    .all() as {
-    id: string;
-    price: number;
-    createdAt: string;
+  const skins = getAllSkins();
+  const activeListings: Array<{
     tokenId: number;
     name: string;
     rarity: string;
     imageSvg: string;
-    sellerEmail: string;
-    sellerId: string;
-  }[];
+    price: string;
+    sellerAddress: string;
+    sellerEmail: string | null;
+  }> = [];
+
+  for (const skin of skins) {
+    const listing = await getListingOnChain(skin.tokenId);
+    if (listing && listing.active) {
+      const sellerUser = db.prepare("SELECT email FROM users WHERE wallet_address = ?").get(listing.seller) as { email: string } | undefined;
+      activeListings.push({
+        tokenId: skin.tokenId,
+        name: skin.name,
+        rarity: skin.rarity,
+        imageSvg: skin.imageSvg,
+        price: listing.price.toString(),
+        sellerAddress: listing.seller,
+        sellerEmail: sellerUser?.email ?? null,
+      });
+    }
+  }
+
+  return activeListings;
 }
 
-export function getMySkinsWithActiveListing(ownerId: string) {
-  ensureSeeded();
+export async function getMySkins(walletAddress: string) {
   const db = getDb();
-  return db
-    .prepare(
-      `
-      SELECT
-        s.id AS id,
-        s.token_id AS tokenId,
-        s.name AS name,
-        s.rarity AS rarity,
-        s.image_svg AS imageSvg,
-        l.id AS listingId,
-        l.price AS listingPrice
-      FROM skins s
-      LEFT JOIN listings l
-        ON l.skin_id = s.id
-       AND l.status = 'ACTIVE'
-      WHERE s.owner_id = ?
-      ORDER BY s.token_id ASC
-    `,
-    )
-    .all(ownerId) as {
+  const skins = getAllSkins();
+  const mySkins: Array<{
     id: string;
     tokenId: number;
     name: string;
     rarity: string;
     imageSvg: string;
-    listingId: string | null;
-    listingPrice: number | null;
-  }[];
+    listingPrice: string | null;
+  }> = [];
+
+  for (const skin of skins) {
+    const owner = await getOwnerOf(skin.tokenId);
+    if (owner?.toLowerCase() === walletAddress.toLowerCase()) {
+      const listing = await getListingOnChain(skin.tokenId);
+      mySkins.push({
+        id: skin.id,
+        tokenId: skin.tokenId,
+        name: skin.name,
+        rarity: skin.rarity,
+        imageSvg: skin.imageSvg,
+        listingPrice: listing?.active ? listing.price.toString() : null,
+      });
+    }
+  }
+
+  return mySkins;
 }
 
-export function getMyListings(sellerId: string) {
-  ensureSeeded();
+export function getSkinByTokenId(tokenId: number) {
   const db = getDb();
-  return db
-    .prepare(
-      `
-      SELECT
-        l.id AS id,
-        l.price AS price,
-        l.status AS status,
-        l.created_at AS createdAt,
-        l.sold_at AS soldAt,
-        s.token_id AS tokenId,
-        s.name AS name,
-        s.rarity AS rarity,
-        s.image_svg AS imageSvg,
-        bu.email AS buyerEmail
-      FROM listings l
-      JOIN skins s ON s.id = l.skin_id
-      LEFT JOIN users bu ON bu.id = l.buyer_id
-      WHERE l.seller_id = ?
-      ORDER BY l.created_at DESC
-    `,
-    )
-    .all(sellerId) as {
+  return db.prepare("SELECT * FROM skins WHERE token_id = ?").get(tokenId) as {
     id: string;
-    price: number;
-    status: "ACTIVE" | "SOLD" | "CANCELLED" | string;
-    createdAt: string;
-    soldAt: string | null;
-    tokenId: number;
+    token_id: number;
     name: string;
     rarity: string;
-    imageSvg: string;
-    buyerEmail: string | null;
-  }[];
+    attributes_json: string;
+    image_svg: string;
+    metadata_uri: string | null;
+  } | undefined;
 }
-
-

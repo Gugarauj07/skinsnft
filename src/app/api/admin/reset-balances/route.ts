@@ -1,13 +1,11 @@
 import { NextRequest } from "next/server";
-import { ensureSeeded } from "@/server/db";
 import { requireAdmin } from "@/server/auth";
-import { resetBalances } from "@/server/admin";
+import { getNetworkInfo } from "@/server/admin";
 import { jsonError, jsonOk } from "../../_util";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  ensureSeeded();
   try {
     requireAdmin(req);
   } catch (e) {
@@ -16,8 +14,14 @@ export async function POST(req: NextRequest) {
     return jsonError("FORBIDDEN", "Sem permissão", 403);
   }
 
-  resetBalances({ initialBalance: 1000 });
-  return jsonOk({ reset: true });
+  try {
+    const networkInfo = await getNetworkInfo();
+    return jsonOk({ 
+      message: "Com blockchain real, saldos são gerenciados on-chain. Use a rota adjust-balance para enviar ETH.",
+      network: networkInfo,
+    });
+  } catch (e) {
+    console.error("Network info error:", e);
+    return jsonError("INTERNAL_ERROR", "Erro ao obter informações da rede", 500);
+  }
 }
-
-

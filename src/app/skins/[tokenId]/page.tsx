@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/server/auth";
-import { getSkinWithListingByTokenId } from "@/server/queries";
+import { getSkinWithOwner } from "@/server/queries";
 import { SkinActions } from "@/components/SkinActions";
 
 export default async function SkinDetailPage(props: { params: Promise<{ tokenId: string }> }) {
   const { tokenId } = await props.params;
   const id = Number(tokenId);
-  const data = Number.isFinite(id) ? getSkinWithListingByTokenId(id) : null;
+  const data = Number.isFinite(id) ? await getSkinWithOwner(id) : null;
+  
   if (!data) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-10">
@@ -18,7 +19,8 @@ export default async function SkinDetailPage(props: { params: Promise<{ tokenId:
   }
 
   const me = await getCurrentUser();
-  const isOwner = !!me && me.id === data.skin.owner.id;
+  const isOwner = !!me && data.skin.owner?.address?.toLowerCase() === me.walletAddress.toLowerCase();
+  const ownerLabel = data.skin.owner?.email || (data.skin.owner?.address ? `${data.skin.owner.address.slice(0, 10)}...` : "Desconhecido");
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
@@ -32,7 +34,7 @@ export default async function SkinDetailPage(props: { params: Promise<{ tokenId:
           </div>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">{data.skin.name}</h1>
           <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-            {data.skin.rarity} · dono: {data.skin.owner.email}
+            {data.skin.rarity} · dono: {ownerLabel}
           </div>
         </div>
         <div className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm dark:border-zinc-800">
@@ -58,16 +60,18 @@ export default async function SkinDetailPage(props: { params: Promise<{ tokenId:
         <div className="space-y-4">
           <SkinActions tokenId={data.skin.tokenId} isOwner={isOwner} listing={data.listing} isLoggedIn={!!me} />
           <div className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-black dark:text-zinc-300">
-            <div className="font-medium text-zinc-900 dark:text-zinc-100">Dica</div>
+            <div className="font-medium text-zinc-900 dark:text-zinc-100">Blockchain</div>
             <div className="mt-1">
-              Para testar rápido: faça login no admin (<span className="font-mono">admin@local</span> /{" "}
-              <span className="font-mono">admin123</span>), liste uma skin, crie outra conta e compre.
+              Este NFT está na blockchain real. Todas as transações são registradas on-chain.
             </div>
+            {data.skin.owner?.address && (
+              <div className="mt-2 font-mono text-xs break-all">
+                Owner: {data.skin.owner.address}
+              </div>
+            )}
           </div>
         </div>
       </div>
     </main>
   );
 }
-
-

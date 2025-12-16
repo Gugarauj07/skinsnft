@@ -3,7 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-type Listing = { id: string; price: number; seller: { id: string; email: string } } | null;
+type Listing = { 
+  priceWei: string; 
+  priceEth: string;
+  sellerAddress: string;
+  seller: { id: string; email: string } | null;
+} | null;
 
 export function SkinActions(props: {
   tokenId: number;
@@ -12,9 +17,10 @@ export function SkinActions(props: {
   isLoggedIn: boolean;
 }) {
   const router = useRouter();
-  const [price, setPrice] = useState("100");
+  const [priceEth, setPriceEth] = useState("0.01");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
   const canList = props.isLoggedIn && props.isOwner && !props.listing;
   const canCancel = props.isLoggedIn && props.isOwner && !!props.listing;
@@ -22,23 +28,26 @@ export function SkinActions(props: {
 
   const listingLabel = useMemo(() => {
     if (!props.listing) return null;
-    return `Preço: ${props.listing.price} · vendedor: ${props.listing.seller.email}`;
+    const sellerLabel = props.listing.seller?.email || props.listing.sellerAddress.slice(0, 10) + "...";
+    return `Preço: ${props.listing.priceEth} ETH · vendedor: ${sellerLabel}`;
   }, [props.listing]);
 
   async function list() {
     setError(null);
+    setTxHash(null);
     setLoading(true);
     try {
       const res = await fetch("/api/listings", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ tokenId: props.tokenId, price: Number(price) }),
+        body: JSON.stringify({ tokenId: props.tokenId, priceEth }),
       });
-      const json = (await res.json()) as { ok: boolean; error?: { message?: string } };
+      const json = (await res.json()) as { ok: boolean; data?: { txHash?: string }; error?: { message?: string } };
       if (!res.ok || !json.ok) {
         setError(json.error?.message ?? "Falha ao listar");
         return;
       }
+      if (json.data?.txHash) setTxHash(json.data.txHash);
       router.refresh();
     } finally {
       setLoading(false);
@@ -48,14 +57,16 @@ export function SkinActions(props: {
   async function cancel() {
     if (!props.listing) return;
     setError(null);
+    setTxHash(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/listings/${props.listing.id}/cancel`, { method: "POST" });
-      const json = (await res.json()) as { ok: boolean; error?: { message?: string } };
+      const res = await fetch(`/api/listings/${props.tokenId}/cancel`, { method: "POST" });
+      const json = (await res.json()) as { ok: boolean; data?: { txHash?: string }; error?: { message?: string } };
       if (!res.ok || !json.ok) {
         setError(json.error?.message ?? "Falha ao cancelar");
         return;
       }
+      if (json.data?.txHash) setTxHash(json.data.txHash);
       router.refresh();
     } finally {
       setLoading(false);
@@ -65,14 +76,16 @@ export function SkinActions(props: {
   async function buy() {
     if (!props.listing) return;
     setError(null);
+    setTxHash(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/listings/${props.listing.id}/buy`, { method: "POST" });
-      const json = (await res.json()) as { ok: boolean; error?: { message?: string } };
+      const res = await fetch(`/api/listings/${props.tokenId}/buy`, { method: "POST" });
+      const json = (await res.json()) as { ok: boolean; data?: { txHash?: string }; error?: { message?: string } };
       if (!res.ok || !json.ok) {
         setError(json.error?.message ?? "Falha ao comprar");
         return;
       }
+      if (json.data?.txHash) setTxHash(json.data.txHash);
       router.refresh();
     } finally {
       setLoading(false);
@@ -94,14 +107,21 @@ export function SkinActions(props: {
         </div>
       ) : null}
 
+      {txHash ? (
+        <div className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300">
+          TX: {txHash.slice(0, 20)}...
+        </div>
+      ) : null}
+
       <div className="mt-4 flex flex-col gap-3">
         {canList ? (
           <div className="flex items-end gap-2">
             <div className="flex-1">
-              <label className="text-xs text-zinc-600 dark:text-zinc-300">Preço</label>
+              <label className="text-xs text-zinc-600 dark:text-zinc-300">Preço (ETH)</label>
               <input
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                value={priceEth}
+                onChange={(e) => setPriceEth(e.target.value)}
+                placeholder="0.01"
                 className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900/20 dark:border-zinc-800 dark:bg-black dark:focus:ring-zinc-100/20"
               />
             </div>
@@ -110,7 +130,7 @@ export function SkinActions(props: {
               onClick={list}
               className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
             >
-              Listar
+              {loading ? "..." : "Listar"}
             </button>
           </div>
         ) : null}
@@ -121,7 +141,7 @@ export function SkinActions(props: {
             onClick={cancel}
             className="rounded-md border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-800 dark:hover:bg-zinc-900"
           >
-            Cancelar listing
+            {loading ? "Processando..." : "Cancelar listing"}
           </button>
         ) : null}
 
@@ -131,7 +151,7 @@ export function SkinActions(props: {
             onClick={buy}
             className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-60"
           >
-            Comprar
+            {loading ? "Processando..." : `Comprar por ${props.listing?.priceEth} ETH`}
           </button>
         ) : null}
 
@@ -142,5 +162,3 @@ export function SkinActions(props: {
     </div>
   );
 }
-
-

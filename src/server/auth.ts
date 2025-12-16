@@ -2,13 +2,23 @@ import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
-import { getDb } from "./db";
+import { getDb, createUserWithWallet } from "./db";
+import { getBalance, weiToEth } from "./blockchain";
 
 export type AuthUser = {
   id: string;
   email: string;
   role: "USER" | "ADMIN";
-  balance: number;
+  walletAddress: string;
+  privateKey: string;
+};
+
+export type AuthUserPublic = {
+  id: string;
+  email: string;
+  role: "USER" | "ADMIN";
+  walletAddress: string;
+  balance: string;
 };
 
 export const COOKIE_NAME = "session";
@@ -23,7 +33,6 @@ function normalizeEmail(email: string) {
 }
 
 function isValidEmail(email: string) {
-  // MVP-grade validation
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
@@ -39,7 +48,7 @@ export function sessionCookieOptions() {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: false, // local MVP
+    secure: false,
     path: "/",
     maxAge: SESSION_TTL_DAYS * 24 * 60 * 60,
   };
@@ -53,14 +62,47 @@ export function getUserBySessionToken(token: string | null): AuthUser | null {
   const row = db
     .prepare(
       `
-      SELECT u.id, u.email, u.role, u.balance
+      SELECT u.id, u.email, u.role, u.wallet_address, u.wallet_private_key
       FROM sessions s
       JOIN users u ON u.id = s.user_id
       WHERE s.token_hash = ? AND s.expires_at > ?
     `,
     )
-    .get(tokenHash, now) as AuthUser | undefined;
-  return row ?? null;
+    .get(tokenHash, now) as {
+      id: string;
+      email: string;
+      role: "USER" | "ADMIN";
+      wallet_address: string;
+      wallet_private_key: string;
+    } | undefined;
+  
+  if (!row) return null;
+  
+  return {
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    walletAddress: row.wallet_address,
+    privateKey: row.wallet_private_key,
+  };
+}
+
+export async function getUserWithBalance(user: AuthUser): Promise<AuthUserPublic> {
+  let balance = "0";
+  try {
+    const balanceWei = await getBalance(user.walletAddress);
+    balance = weiToEth(balanceWei);
+  } catch {
+    // ignore blockchain errors
+  }
+  
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    walletAddress: user.walletAddress,
+    balance,
+  };
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
@@ -92,25 +134,21 @@ export function createUser(params: { email: string; password: string }) {
   if (exists) throw new Error("EMAIL_TAKEN");
 
   const passwordHash = bcrypt.hashSync(params.password, 10);
-  const id = cryptoRandomId();
-  const t = new Date().toISOString();
-  db.prepare(
-    "INSERT INTO users (id, email, password_hash, role, balance, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
-  ).run(id, email, passwordHash, "USER", 1000, t, t);
+  const result = createUserWithWallet(email, passwordHash);
 
-  return { id, email };
+  return { id: result.id, email: result.email, walletAddress: result.walletAddress };
 }
 
 export function verifyLogin(params: { email: string; password: string }) {
   const email = normalizeEmail(params.email);
   const db = getDb();
   const row = db
-    .prepare("SELECT id, email, password_hash FROM users WHERE email=?")
-    .get(email) as { id: string; email: string; password_hash: string } | undefined;
+    .prepare("SELECT id, email, password_hash, wallet_address FROM users WHERE email=?")
+    .get(email) as { id: string; email: string; password_hash: string; wallet_address: string } | undefined;
   if (!row) return null;
   const ok = bcrypt.compareSync(params.password, row.password_hash);
   if (!ok) return null;
-  return { id: row.id, email: row.email };
+  return { id: row.id, email: row.email, walletAddress: row.wallet_address };
 }
 
 export function createSessionForUser(userId: string, token: string) {
@@ -138,5 +176,3 @@ export function deleteSessionByToken(token: string | null) {
 function cryptoRandomId() {
   return randomBytes(16).toString("hex");
 }
-
-

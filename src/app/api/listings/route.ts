@@ -1,54 +1,23 @@
 import { NextRequest } from "next/server";
-import { randomBytes } from "node:crypto";
-import { ensureSeeded, getDb } from "@/server/db";
 import { requireUser } from "@/server/auth";
-import { appendLedgerEntry } from "@/server/ledger";
+import { listSkinForSale, getOwnerOf, ethToWei, getListingOnChain } from "@/server/blockchain";
+import { recordTransaction, getDb } from "@/server/db";
+import { getActiveListingsFromChain } from "@/server/queries";
 import { jsonError, jsonOk } from "../_util";
 
 export const runtime = "nodejs";
 
-function randomId() {
-  return randomBytes(16).toString("hex");
-}
-
 export async function GET() {
-  ensureSeeded();
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `
-      SELECT
-        l.id AS id,
-        l.price AS price,
-        l.created_at AS createdAt,
-        s.token_id AS tokenId,
-        s.name AS name,
-        s.rarity AS rarity,
-        s.image_svg AS imageSvg,
-        su.email AS sellerEmail
-      FROM listings l
-      JOIN skins s ON s.id = l.skin_id
-      JOIN users su ON su.id = l.seller_id
-      WHERE l.status = 'ACTIVE'
-      ORDER BY l.created_at DESC
-    `,
-    )
-    .all() as {
-    id: string;
-    price: number;
-    createdAt: string;
-    tokenId: number;
-    name: string;
-    rarity: string;
-    imageSvg: string;
-    sellerEmail: string;
-  }[];
-
-  return jsonOk({ listings: rows });
+  try {
+    const listings = await getActiveListingsFromChain();
+    return jsonOk({ listings });
+  } catch (e) {
+    console.error("Error fetching listings:", e);
+    return jsonError("INTERNAL_ERROR", "Erro ao buscar listings", 500);
+  }
 }
 
 export async function POST(req: NextRequest) {
-  ensureSeeded();
   let user;
   try {
     user = requireUser(req);
@@ -56,48 +25,46 @@ export async function POST(req: NextRequest) {
     return jsonError("UNAUTHORIZED", "Faça login", 401);
   }
 
-  const body = (await req.json()) as { tokenId?: number; price?: number };
+  const body = (await req.json()) as { tokenId?: number; priceEth?: string };
   const tokenId = Number(body.tokenId);
-  const price = Number(body.price);
-  if (!Number.isFinite(tokenId) || !Number.isFinite(price) || price <= 0) {
+  const priceEth = body.priceEth;
+  
+  if (!Number.isFinite(tokenId) || !priceEth) {
     return jsonError("BAD_REQUEST", "tokenId/preço inválidos", 400);
   }
 
-  const db = getDb();
-  const t = new Date().toISOString();
+  const priceNum = parseFloat(priceEth);
+  if (priceNum <= 0) {
+    return jsonError("BAD_REQUEST", "Preço deve ser maior que 0", 400);
+  }
 
   try {
-    const tx = db.transaction(() => {
-      const skin = db
-        .prepare("SELECT id, owner_id FROM skins WHERE token_id = ? LIMIT 1")
-        .get(tokenId) as { id: string; owner_id: string } | undefined;
-      if (!skin) throw new Error("NOT_FOUND");
-      if (skin.owner_id !== user.id) throw new Error("NOT_OWNER");
+    const owner = await getOwnerOf(tokenId);
+    
+    if (!owner || owner.toLowerCase() !== user.walletAddress.toLowerCase()) {
+      return jsonError("NOT_OWNER", "Você não é o dono desta skin", 403);
+    }
 
-      const existing = db
-        .prepare("SELECT 1 FROM listings WHERE skin_id=? AND status='ACTIVE' LIMIT 1")
-        .get(skin.id);
-      if (existing) throw new Error("ALREADY_LISTED");
+    const existingListing = await getListingOnChain(tokenId);
+    if (existingListing?.active) {
+      return jsonError("ALREADY_LISTED", "Skin já está listada", 409);
+    }
 
-      const listingId = randomId();
-      db.prepare(
-        "INSERT INTO listings (id, skin_id, seller_id, buyer_id, price, status, created_at, sold_at) VALUES (?,?,?,?,?,?,?,?)",
-      ).run(listingId, skin.id, user.id, null, price, "ACTIVE", t, null);
+    const priceWei = ethToWei(priceEth);
+    const { txHash } = await listSkinForSale(user.privateKey, tokenId, priceWei);
 
-      appendLedgerEntry("LIST", { listingId, tokenId, price, sellerId: user.id });
-
-      return listingId;
+    recordTransaction({
+      type: "LIST",
+      tokenId,
+      fromAddress: user.walletAddress,
+      priceWei: priceWei.toString(),
+      txHash,
     });
 
-    const listingId = tx();
-    return jsonOk({ listingId }, { status: 201 });
+    return jsonOk({ tokenId, priceWei: priceWei.toString(), txHash }, { status: 201 });
   } catch (e) {
+    console.error("List error:", e);
     const msg = e instanceof Error ? e.message : "UNKNOWN";
-    if (msg === "NOT_FOUND") return jsonError("NOT_FOUND", "Skin não encontrada", 404);
-    if (msg === "NOT_OWNER") return jsonError("NOT_OWNER", "Você não é o dono", 403);
-    if (msg === "ALREADY_LISTED") return jsonError("ALREADY_LISTED", "Já está listada", 409);
-    return jsonError("INTERNAL_ERROR", "Erro ao listar", 500);
+    return jsonError("INTERNAL_ERROR", "Erro ao listar: " + msg, 500);
   }
 }
-
-

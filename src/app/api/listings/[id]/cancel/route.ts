@@ -1,13 +1,12 @@
 import { NextRequest } from "next/server";
-import { ensureSeeded, getDb } from "@/server/db";
 import { requireUser } from "@/server/auth";
-import { appendLedgerEntry } from "@/server/ledger";
+import { cancelSkinListing, getListingOnChain } from "@/server/blockchain";
+import { recordTransaction } from "@/server/db";
 import { jsonError, jsonOk } from "../../../_util";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  ensureSeeded();
   let user;
   try {
     user = requireUser(req);
@@ -16,32 +15,36 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const { id } = await ctx.params;
-  if (!id) return jsonError("BAD_REQUEST", "id inválido", 400);
-
-  const db = getDb();
+  const tokenId = Number(id);
+  
+  if (!Number.isFinite(tokenId) || tokenId <= 0) {
+    return jsonError("BAD_REQUEST", "tokenId inválido", 400);
+  }
 
   try {
-    const tx = db.transaction(() => {
-      const listing = db
-        .prepare("SELECT id, status, seller_id AS sellerId FROM listings WHERE id=? LIMIT 1")
-        .get(id) as { id: string; status: string; sellerId: string } | undefined;
-      if (!listing) throw new Error("NOT_FOUND");
-      if (listing.status !== "ACTIVE") throw new Error("NOT_ACTIVE");
-      if (listing.sellerId !== user.id) throw new Error("FORBIDDEN");
+    const listing = await getListingOnChain(tokenId);
+    
+    if (!listing || !listing.active) {
+      return jsonError("NOT_FOUND", "Listing não encontrado ou não está ativo", 404);
+    }
 
-      db.prepare("UPDATE listings SET status='CANCELLED' WHERE id=?").run(id);
-      appendLedgerEntry("CANCEL_LIST", { listingId: id, sellerId: user.id });
-      return { listingId: id };
+    if (listing.seller.toLowerCase() !== user.walletAddress.toLowerCase()) {
+      return jsonError("FORBIDDEN", "Você não é o vendedor deste listing", 403);
+    }
+
+    const { txHash } = await cancelSkinListing(user.privateKey, tokenId);
+
+    recordTransaction({
+      type: "CANCEL_LIST",
+      tokenId,
+      fromAddress: user.walletAddress,
+      txHash,
     });
 
-    return jsonOk(tx());
+    return jsonOk({ tokenId, txHash });
   } catch (e) {
+    console.error("Cancel listing error:", e);
     const msg = e instanceof Error ? e.message : "UNKNOWN";
-    if (msg === "NOT_FOUND") return jsonError("NOT_FOUND", "Listing não encontrado", 404);
-    if (msg === "NOT_ACTIVE") return jsonError("NOT_ACTIVE", "Listing não está ativo", 409);
-    if (msg === "FORBIDDEN") return jsonError("FORBIDDEN", "Sem permissão", 403);
-    return jsonError("INTERNAL_ERROR", "Erro ao cancelar", 500);
+    return jsonError("INTERNAL_ERROR", "Erro ao cancelar: " + msg, 500);
   }
 }
-
-

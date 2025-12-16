@@ -1,13 +1,12 @@
 import { NextRequest } from "next/server";
-import { ensureSeeded } from "@/server/db";
 import { requireAdmin } from "@/server/auth";
-import { adjustBalance } from "@/server/admin";
+import { fundUserWallet } from "@/server/admin";
+import { getDb } from "@/server/db";
 import { jsonError, jsonOk } from "../../_util";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  ensureSeeded();
   try {
     requireAdmin(req);
   } catch (e) {
@@ -16,20 +15,37 @@ export async function POST(req: NextRequest) {
     return jsonError("FORBIDDEN", "Sem permissão", 403);
   }
 
-  const body = (await req.json()) as { email?: string; delta?: number };
+  const body = (await req.json()) as { email?: string; amountEth?: string };
   const email = body.email?.trim().toLowerCase();
-  const delta = Number(body.delta);
-  if (!email || !Number.isFinite(delta)) return jsonError("BAD_REQUEST", "email/delta inválidos", 400);
+  const amountEth = body.amountEth;
+  
+  if (!email || !amountEth) {
+    return jsonError("BAD_REQUEST", "email/amountEth inválidos", 400);
+  }
+
+  const amount = parseFloat(amountEth);
+  if (amount <= 0) {
+    return jsonError("BAD_REQUEST", "Valor deve ser positivo", 400);
+  }
 
   try {
-    const result = adjustBalance({ email, delta });
-    return jsonOk(result);
+    const db = getDb();
+    const user = db.prepare("SELECT wallet_address FROM users WHERE email = ?").get(email) as { wallet_address: string } | undefined;
+    
+    if (!user) {
+      return jsonError("NOT_FOUND", "Usuário não encontrado", 404);
+    }
+
+    const result = await fundUserWallet({ walletAddress: user.wallet_address, amountEth });
+    return jsonOk({ 
+      funded: true, 
+      walletAddress: user.wallet_address,
+      amountEth: result.amountEth,
+      txHash: result.txHash,
+    });
   } catch (e) {
+    console.error("Fund error:", e);
     const msg = e instanceof Error ? e.message : "UNKNOWN";
-    if (msg === "NOT_FOUND") return jsonError("NOT_FOUND", "Usuário não encontrado", 404);
-    if (msg === "NEGATIVE") return jsonError("NEGATIVE", "Saldo não pode ficar negativo", 400);
-    return jsonError("INTERNAL_ERROR", "Erro ao ajustar saldo", 500);
+    return jsonError("INTERNAL_ERROR", "Erro ao enviar ETH: " + msg, 500);
   }
 }
-
-

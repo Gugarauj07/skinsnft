@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
-import { ensureSeeded, getDb } from "@/server/db";
+import { getDb } from "@/server/db";
+import { getOwnerOf, getListingOnChain, weiToEth } from "@/server/blockchain";
 import { jsonError, jsonOk } from "../../_util";
 
 export const runtime = "nodejs";
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ tokenId: string }> }) {
-  ensureSeeded();
   const { tokenId } = await ctx.params;
   const id = Number(tokenId);
   if (!Number.isFinite(id)) return jsonError("BAD_REQUEST", "tokenId inválido", 400);
@@ -21,10 +21,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ tokenId: s
         s.rarity AS rarity,
         s.attributes_json AS attributesJson,
         s.image_svg AS imageSvg,
-        s.owner_id AS ownerId,
-        u.email AS ownerEmail
+        s.metadata_uri AS metadataUri
       FROM skins s
-      JOIN users u ON u.id = s.owner_id
       WHERE s.token_id = ?
       LIMIT 1
     `,
@@ -37,31 +35,32 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ tokenId: s
         rarity: string;
         attributesJson: string;
         imageSvg: string;
-        ownerId: string;
-        ownerEmail: string;
+        metadataUri: string | null;
       }
     | undefined;
 
   if (!skin) return jsonError("NOT_FOUND", "Skin não encontrada", 404);
 
-  const listing = db
-    .prepare(
-      `
-      SELECT
-        l.id AS id,
-        l.price AS price,
-        l.status AS status,
-        l.seller_id AS sellerId,
-        su.email AS sellerEmail
-      FROM listings l
-      JOIN users su ON su.id = l.seller_id
-      WHERE l.skin_id = ? AND l.status = 'ACTIVE'
-      LIMIT 1
-    `,
-    )
-    .get(skin.id) as
-    | { id: string; price: number; status: string; sellerId: string; sellerEmail: string }
-    | undefined;
+  const ownerAddress = await getOwnerOf(id);
+  let ownerUser: { id: string; email: string } | null = null;
+  
+  if (ownerAddress) {
+    const user = db.prepare("SELECT id, email FROM users WHERE wallet_address = ?").get(ownerAddress) as { id: string; email: string } | undefined;
+    if (user) ownerUser = user;
+  }
+
+  const listing = await getListingOnChain(id);
+  let listingData = null;
+  
+  if (listing?.active) {
+    const sellerUser = db.prepare("SELECT id, email FROM users WHERE wallet_address = ?").get(listing.seller) as { id: string; email: string } | undefined;
+    listingData = {
+      priceWei: listing.price.toString(),
+      priceEth: weiToEth(listing.price),
+      sellerAddress: listing.seller,
+      seller: sellerUser ? { id: sellerUser.id, email: sellerUser.email } : null,
+    };
+  }
 
   return jsonOk({
     skin: {
@@ -71,12 +70,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ tokenId: s
       rarity: skin.rarity,
       attributes: JSON.parse(skin.attributesJson) as unknown,
       imageSvg: skin.imageSvg,
-      owner: { id: skin.ownerId, email: skin.ownerEmail },
+      metadataUri: skin.metadataUri,
+      owner: ownerUser 
+        ? { id: ownerUser.id, email: ownerUser.email, address: ownerAddress }
+        : { address: ownerAddress },
     },
-    listing: listing
-      ? { id: listing.id, price: listing.price, status: listing.status, seller: { id: listing.sellerId, email: listing.sellerEmail } }
-      : null,
+    listing: listingData,
   });
 }
-
-

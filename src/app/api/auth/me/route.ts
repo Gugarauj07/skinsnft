@@ -1,15 +1,17 @@
 import { NextRequest } from "next/server";
-import { getSessionCookieValueFrom, getUserBySessionToken } from "@/server/auth";
-import { ensureSeeded } from "@/server/db";
+import { getSessionCookieValueFrom, getUserBySessionToken, getUserWithBalance } from "@/server/auth";
 import { jsonOk } from "../../_util";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  ensureSeeded();
   const token = getSessionCookieValueFrom(req);
   const user = getUserBySessionToken(token);
-  return jsonOk({ user });
+  
+  if (!user) {
+    return jsonOk({ user: null });
+  }
+
+  const userPublic = await getUserWithBalance(user);
+  return jsonOk({ user: userPublic });
 }
-
-

@@ -1,13 +1,12 @@
 import { NextRequest } from "next/server";
-import { ensureSeeded, getDb } from "@/server/db";
 import { requireUser } from "@/server/auth";
-import { appendLedgerEntry } from "@/server/ledger";
+import { buySkin, getListingOnChain, getOwnerOf } from "@/server/blockchain";
+import { recordTransaction, getDb } from "@/server/db";
 import { jsonError, jsonOk } from "../../../_util";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  ensureSeeded();
   let user;
   try {
     user = requireUser(req);
@@ -16,78 +15,57 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const { id } = await ctx.params;
-  if (!id) return jsonError("BAD_REQUEST", "id inválido", 400);
-
-  const db = getDb();
-  const t = new Date().toISOString();
+  const tokenId = Number(id);
+  
+  if (!Number.isFinite(tokenId) || tokenId <= 0) {
+    return jsonError("BAD_REQUEST", "tokenId inválido", 400);
+  }
 
   try {
-    const tx = db.transaction(() => {
-      const listing = db
-        .prepare(
-          `
-          SELECT
-            l.id AS id,
-            l.price AS price,
-            l.status AS status,
-            l.seller_id AS sellerId,
-            s.id AS skinId,
-            s.token_id AS tokenId
-          FROM listings l
-          JOIN skins s ON s.id = l.skin_id
-          WHERE l.id = ?
-          LIMIT 1
-        `,
-        )
-        .get(id) as
-        | { id: string; price: number; status: string; sellerId: string; skinId: string; tokenId: number }
-        | undefined;
+    const listing = await getListingOnChain(tokenId);
+    
+    if (!listing || !listing.active) {
+      return jsonError("NOT_FOUND", "Listing não encontrado ou não está ativo", 404);
+    }
 
-      if (!listing) throw new Error("NOT_FOUND");
-      if (listing.status !== "ACTIVE") throw new Error("NOT_ACTIVE");
-      if (listing.sellerId === user.id) throw new Error("CANNOT_BUY_OWN");
+    if (listing.seller.toLowerCase() === user.walletAddress.toLowerCase()) {
+      return jsonError("CANNOT_BUY_OWN", "Você não pode comprar sua própria skin", 400);
+    }
 
-      const buyer = db.prepare("SELECT balance FROM users WHERE id=?").get(user.id) as
-        | { balance: number }
-        | undefined;
-      if (!buyer) throw new Error("UNAUTHORIZED");
-      if (buyer.balance < listing.price) throw new Error("INSUFFICIENT_FUNDS");
+    const owner = await getOwnerOf(tokenId);
+    if (!owner || owner.toLowerCase() !== listing.seller.toLowerCase()) {
+      return jsonError("INVALID_LISTING", "Vendedor não é mais o dono", 409);
+    }
 
-      db.prepare("UPDATE users SET balance = balance - ?, updated_at=? WHERE id=?").run(
-        listing.price,
-        t,
-        user.id,
-      );
-      db.prepare("UPDATE users SET balance = balance + ?, updated_at=? WHERE id=?").run(
-        listing.price,
-        t,
-        listing.sellerId,
-      );
+    const { txHash } = await buySkin(user.privateKey, tokenId, listing.price);
 
-      db.prepare("UPDATE skins SET owner_id=? WHERE id=?").run(user.id, listing.skinId);
-      db.prepare("UPDATE listings SET status='SOLD', buyer_id=?, sold_at=? WHERE id=?").run(user.id, t, listing.id);
+    const db = getDb();
+    const sellerUser = db.prepare("SELECT id FROM users WHERE wallet_address = ?").get(listing.seller) as { id: string } | undefined;
 
-      appendLedgerEntry("BUY", {
-        listingId: listing.id,
-        tokenId: listing.tokenId,
-        price: listing.price,
-        sellerId: listing.sellerId,
-        buyerId: user.id,
-      });
-
-      return { listingId: listing.id, tokenId: listing.tokenId };
+    recordTransaction({
+      type: "BUY",
+      tokenId,
+      fromAddress: listing.seller,
+      toAddress: user.walletAddress,
+      priceWei: listing.price.toString(),
+      txHash,
     });
 
-    return jsonOk(tx());
+    return jsonOk({ 
+      tokenId, 
+      txHash,
+      price: listing.price.toString(),
+      seller: listing.seller,
+      buyer: user.walletAddress,
+    });
   } catch (e) {
+    console.error("Buy error:", e);
     const msg = e instanceof Error ? e.message : "UNKNOWN";
-    if (msg === "NOT_FOUND") return jsonError("NOT_FOUND", "Listing não encontrado", 404);
-    if (msg === "NOT_ACTIVE") return jsonError("NOT_ACTIVE", "Listing não está ativo", 409);
-    if (msg === "CANNOT_BUY_OWN") return jsonError("CANNOT_BUY_OWN", "Você não pode comprar sua própria skin", 400);
-    if (msg === "INSUFFICIENT_FUNDS") return jsonError("INSUFFICIENT_FUNDS", "Saldo insuficiente", 400);
-    if (msg === "UNAUTHORIZED") return jsonError("UNAUTHORIZED", "Faça login", 401);
-    return jsonError("INTERNAL_ERROR", "Erro ao comprar", 500);
+    
+    if (msg.includes("insufficient funds") || msg.includes("Insufficient")) {
+      return jsonError("INSUFFICIENT_FUNDS", "Saldo ETH insuficiente", 400);
+    }
+    
+    return jsonError("INTERNAL_ERROR", "Erro ao comprar: " + msg, 500);
   }
 }
-
-
